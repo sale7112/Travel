@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>طيران النيل | الاستعلام الذكي عن التأشيرات</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #FFB347;
+            --bg-dark: #0a0c12;
+        }
+        body {
+            font-family: 'Cairo', sans-serif;
+            background: radial-gradient(circle at 10% 20%, #0a0f1a, #03060c);
+            min-height: 100vh;
+        }
+        .glass-card {
+            background: rgba(18, 25, 35, 0.85);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 200, 120, 0.25);
+            border-radius: 2rem;
+        }
+        .gradient-text {
+            background: linear-gradient(135deg, #FFD89B, #FFB347);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        .btn-glow {
+            background: linear-gradient(95deg, #FFB347, #FF8C42);
+            transition: all 0.2s;
+        }
+        .btn-glow:hover {
+            transform: scale(0.98);
+            box-shadow: 0 5px 20px rgba(255,140,66,0.4);
+        }
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: #1a5a2a;
+            padding: 0.75rem 1.5rem;
+            border-radius: 3rem;
+            opacity: 0;
+            visibility: hidden;
+            transition: 0.2s;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body class="text-white">
+
+<div class="container mx-auto px-4 py-8 max-w-4xl">
+    <!-- Header -->
+    <div class="text-center mb-10" data-aos="fade-down">
+        <h1 class="text-4xl md:text-5xl font-extrabold gradient-text mb-2">
+            <i class="fas fa-passport"></i> الاستعلام عن التأشيرة
+        </h1>
+        <p class="text-gray-300">استعلم برقم الهوية أو رقم التأشيرة</p>
+    </div>
+    
+    <!-- Search Card -->
+    <div class="glass-card p-6 md:p-8 mb-8" data-aos="fade-up">
+        <div class="flex flex-wrap gap-4 items-end">
+            <div class="flex-1">
+                <label class="block text-amber-300 mb-2"><i class="fas fa-id-card"></i> رقم الهوية</label>
+                <input type="text" id="searchNational" class="w-full bg-black/40 border border-amber-500/30 rounded-full px-5 py-3 focus:outline-none focus:border-amber-400" placeholder="30208142400477">
+            </div>
+            <div class="text-2xl text-amber-400">أو</div>
+            <div class="flex-1">
+                <label class="block text-amber-300 mb-2"><i class="fas fa-ticket-alt"></i> رقم التأشيرة</label>
+                <input type="text" id="searchVisa" class="w-full bg-black/40 border border-amber-500/30 rounded-full px-5 py-3 focus:outline-none focus:border-amber-400" placeholder="UAE-VISA-EG-7742">
+            </div>
+            <button id="searchBtn" class="btn-glow px-8 py-3 rounded-full font-bold"><i class="fas fa-search ml-1"></i> استعلام</button>
+        </div>
+    </div>
+    
+    <!-- Result Area -->
+    <div id="resultArea" data-aos="fade-up"></div>
+    
+    <!-- Action Buttons -->
+    <div class="flex gap-4 mt-6" data-aos="fade-up">
+        <button id="clearBtn" class="flex-1 bg-gray-700/50 hover:bg-gray-700 py-3 rounded-full transition"><i class="fas fa-eraser ml-1"></i> مسح</button>
+        <button id="homeBtn" class="flex-1 bg-transparent border border-amber-400 text-amber-400 hover:bg-amber-400/10 py-3 rounded-full transition"><i class="fas fa-home ml-1"></i> العودة للحجز</button>
+    </div>
+</div>
+
+<div id="toastMsg" class="toast"></div>
+
+<script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+<script>
+    AOS.init({ duration: 600, once: true });
+    
+    const VALID_DATA = {
+        nationalId: "30208142400477",
+        visaNumber: "UAE-VISA-EG-7742",
+        fullName: "خالد أحمد محمد عبد السلام",
+        fullNameEn: "KHALED AHMED MOHAMED ABDELSALAM",
+        birthDate: "14/08/2002",
+        birthPlace: "المنيا - بني مزار",
+        gender: "ذكر",
+        marital: "أعزب",
+        profession: "بكالوريوس في الاعلام",
+        passportNumber: "A41371960",
+        passportExpiry: "14/05/2032",
+        visaExpiry: "30/07/2025"
+    };
+    
+    // Deadline: tomorrow at 6 PM
+    const deadline = new Date();
+    deadline.setDate(deadline.getDate() + 1);
+    deadline.setHours(18, 0, 0, 0);
+    const deadlineText = deadline.toLocaleString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    
+    function showToast(msg, isError = false) {
+        const toast = document.getElementById('toastMsg');
+        toast.style.backgroundColor = isError ? "#8b2c2c" : "#1a6b2f";
+        toast.innerHTML = `<i class="fas ${isError ? 'fa-times' : 'fa-check'} ml-1"></i> ${msg}`;
+        toast.style.opacity = "1";
+        toast.style.visibility = "visible";
+        setTimeout(() => {
+            toast.style.opacity = "0";
+            toast.style.visibility = "hidden";
+        }, 3000);
+    }
+    
+    function displayResult(found) {
+        const area = document.getElementById('resultArea');
+        if (!found) {
+            area.innerHTML = `
+                <div class="glass-card p-6">
+                    <div class="bg-red-900/40 border-r-4 border-red-500 p-4 rounded-2xl mb-4">
+                        <i class="fas fa-exclamation-triangle"></i> ❌ لا توجد تأشيرة مطابقة للبيانات المدخلة
+                    </div>
+                    <div class="bg-amber-900/30 border-r-4 border-amber-500 p-4 rounded-2xl">
+                        <i class="fas fa-clock"></i> ⚠️ آخر موعد للحجز: بكره الساعة 6 مساءً (${deadlineText})
+                    </div>
+                </div>
+            `;
+            return;
+        }
+        
+        area.innerHTML = `
+            <div class="glass-card p-6 md:p-8">
+                <div class="bg-emerald-900/40 border-r-4 border-emerald-500 p-4 rounded-2xl mb-6">
+                    <i class="fas fa-check-circle text-emerald-400"></i> ✅ التأشيرة سارية وصالحة
+                </div>
+                <h3 class="text-xl font-bold text-amber-300 mb-4"><i class="fas fa-user"></i> معلومات المسافر</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
+                    <div class="bg-black/30 rounded-xl p-3"><i class="fas fa-user"></i> ${VALID_DATA.fullName}</div>
+                    <div class="bg-black/30 rounded-xl p-3"><i class="fas fa-globe"></i> ${VALID_DATA.fullNameEn}</div>
+                    <div class="bg-black/30 rounded-xl p-3"><i class="fas fa-calendar"></i> ${VALID_DATA.birthDate} - ${VALID_DATA.birthPlace}</div>
+                    <div class="bg-black/30 rounded-xl p-3"><i class="fas fa-venus-mars"></i> ${VALID_DATA.gender} - ${VALID_DATA.marital}</div>
+                    <div class="bg-black/30 rounded-xl p-3"><i class="fas fa-graduation-cap"></i> ${VALID_DATA.profession}</div>
+                    <div class="bg-black/30 rounded-xl p-3"><i class="fas fa-passport"></i> ${VALID_DATA.passportNumber} (حتى ${VALID_DATA.passportExpiry})</div>
+                    <div class="bg-black/30 rounded-xl p-3"><i class="fas fa-id-card"></i> ${VALID_DATA.nationalId}</div>
+                    <div class="bg-black/30 rounded-xl p-3"><i class="fas fa-ticket-alt"></i> ${VALID_DATA.visaNumber}</div>
+                    <div class="bg-black/30 rounded-xl p-3"><i class="fas fa-hourglass-end"></i> تنتهي: ${VALID_DATA.visaExpiry}</div>
+                </div>
+                <div class="bg-amber-900/40 border-r-4 border-amber-500 p-5 rounded-2xl text-center">
+                    <i class="fas fa-hourglass-half text-amber-300 text-xl"></i>
+                    <p class="font-bold mt-1">⚠️ الحجز متاح بحد أقصى: بكره الساعة 6 مساءً</p>
+                    <p class="text-sm text-gray-300">${deadlineText}</p>
+                    <button id="bookNowBtn" class="mt-4 bg-amber-500 hover:bg-amber-600 text-black font-bold px-8 py-3 rounded-full transition"><i class="fas fa-ticket-alt ml-1"></i> احجز التذكرة الآن</button>
+                </div>
+            </div>
+        `;
+        
+        document.getElementById('bookNowBtn')?.addEventListener('click', () => {
+            window.location.href = 'index.html';
+        });
+    }
+    
+    function search() {
+        const nationalId = document.getElementById('searchNational').value.trim();
+        const visaNum = document.getElementById('searchVisa').value.trim().toUpperCase();
+        
+        if (!nationalId && !visaNum) {
+            showToast("الرجاء إدخال رقم الهوية أو رقم التأشيرة", true);
+            return;
+        }
+        
+        if (nationalId === VALID_DATA.nationalId || visaNum === VALID_DATA.visaNumber) {
+            displayResult(true);
+            showToast(`✓ تم العثور على تأشيرة للسيد ${VALID_DATA.fullName}`);
+        } else {
+            displayResult(false);
+            showToast("❌ لا توجد تأشيرة مطابقة", true);
+        }
+    }
+    
+    document.getElementById('searchBtn').addEventListener('click', search);
+    document.getElementById('clearBtn').addEventListener('click', () => {
+        document.getElementById('searchNational').value = '';
+        document.getElementById('searchVisa').value = '';
+        document.getElementById('resultArea').innerHTML = '';
+        showToast("تم مسح البحث");
+    });
+    document.getElementById('homeBtn').addEventListener('click', () => {
+        window.location.href = 'index.html';
+    });
+    
+    // Enter key support
+    ['searchNational', 'searchVisa'].forEach(id => {
+        document.getElementById(id).addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') search();
+        });
+    });
+</script>
+</body>
+</html>
